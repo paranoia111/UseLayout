@@ -29,9 +29,10 @@
     var barpadding = 0.2;
 
 
-    var xColumn = "region";
+    var xColumn = "area";
     var yColumn = "income";
-    var colorColumn = "category"
+    var colorColumn = "category";
+    var layerColumn = colorColumn;
 
     var innerWidth  = outerWidth  - margin.left - margin.right;
     var innerHeight = outerHeight - margin.top  - margin.bottom;
@@ -53,11 +54,11 @@
     var xScale = d3.scale.ordinal().rangeBands([0, innerWidth], barpadding);
     var yScale = d3.scale.linear().range([innerHeight, 0]);
     //Use your own color scheme
-    var colorScale = d3.scale.ordinal();
-    colorScale.range(["#cb3b0a", "#27ccc0", "#fb7670", "#60b2d0"]);
+    //var colorScale = d3.scale.ordinal();
+    //colorScale.range(["#cb3b0a", "#27ccc0", "#fb7670", "#60b2d0"]);
 
     //Or, just use the d3.scale.category10
-    //var colorScale = d3.scale.category10();
+    var colorScale = d3.scale.category10();
 
     var xAxis = d3.svg.axis().scale(xScale).orient("bottom")
         .innerTickSize(10)
@@ -68,49 +69,72 @@
 
     function render(data){
 
-      colorScale.domain(data.map(function(d){ return d[colorColumn]; }));
+
+
+      var nested = d3.nest()
+        .key(function(d){
+          return d[layerColumn];
+        })
+        .entries(data);
 
       var stack = d3.layout.stack()
         .y(function(d){
           return d[yColumn];
         })
         .values(function(d){
-          return[d];
+          return d.values;
         });
 
-      var stacked = stack(data);
-
-      // demonstrate the data structure below the chart we drew using the tag <pre>
-      //d3.select("body").append("pre")
-        //.text(JSON.stringify(stacked, null, 2));
+        var layers = stack(nested);
 
 
-        xScale.domain(stacked.map( function (d){ return d[xColumn]; }));
-        yScale.domain([0, d3.max(stacked, function (d){ return d.y0 + d.y; })]);
+        xScale.domain(layers[0].values.map(
+          function(d){
+            return d[xColumn];
+          }
+        ));
+        yScale.domain([
+          0,
+          d3.max(layers, function (layer){
+            return d3.max(layer.values, function (d){
+              return d.y0 + d.y;
+            });
+          })
+        ]);
+
+        colorScale.domain(layers.map(function (layer){
+          return layer.key;
+        }));
 
         xAxisG.call(xAxis);
         yAxisG.call(yAxis);
 
+        var layers = g.selectAll(".layer").data(layers);
+                layers.enter().append("g").attr("class", "layer");
+                layers.exit().remove();
+                layers.style("fill", function (d){
+                  return colorScale(d.key);
+                });
 
-        var bars = g.selectAll("rect").data(stacked);
+                var bars = layers.selectAll("rect").data(function (d){
+                  return d.values;
+                });
+                bars.enter().append("rect")
+                bars.exit().remove();
+                bars
+                  .attr("x", function (d){ return xScale(d[xColumn]); })
+                  .attr("y", function (d){ return yScale(d.y0 + d.y); })
+                  .attr("width", xScale.rangeBand())
+                  .attr("height", function (d){ return innerHeight - yScale(d.y); })
+                colorLegendG.call(colorLegend);
+              }
 
-          bars.enter().append("rect");
-
-          bars
-            .attr("x", function (d){ return xScale(d[xColumn]); })
-            .attr("y", function (d){ return yScale(d.y0 + d.y); })
-            .attr("width", xScale.rangeBand())
-            .attr("height", function (d){ return innerHeight - yScale(d.y); })
-            .attr("fill", function(d){ return colorScale(d[colorColumn]); });
-          bars.exit().remove();
-
-        }
     function type(d){
-      d.region = "Rural";
+
       d.income = +d.income;
     return d;
   }
-    d3.csv("incomeStackR(2012).csv", type, render);
+    d3.csv("incomeStackU_R(2012).csv", type, render);
     </script>
 
   </body>

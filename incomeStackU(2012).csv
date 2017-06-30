@@ -1,2 +1,5 @@
-Cata,year,net,wage,business,asset,transfer,total
-Urban,2012,24564.7,17335.6,2548.3,707,6368.1,26959
+category,income
+wage,17335.6
+business,2548.3
+asset,707
+transfer,6368.1
